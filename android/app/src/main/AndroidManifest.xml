@@ -1,0 +1,155 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ──────────────────────────────────────────────────────────────── -->
+    <!-- PERMISOS BÁSICOS                                                 -->
+    <!-- ──────────────────────────────────────────────────────────────── -->
+
+    <!-- Acceso a internet (requerido por React Native y librerías) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Vibración en notificaciones y alarmas -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- ──────────────────────────────────────────────────────────────── -->
+    <!-- PERMISOS DE ALARMA                                               -->
+    <!-- ──────────────────────────────────────────────────────────────── -->
+
+    <!-- Android 13+ (API 33): Mostrar notificaciones (incluyendo la del foreground service).
+         Sin esto, la notificación del AlarmService no aparece en Android 13+. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Android 12+ (API 31): Programar alarmas exactas con AlarmManager.
+         Sin este permiso, setExactAndAllowWhileIdle() lanza una SecurityException.
+         El usuario debe concederlo manualmente en Ajustes > Aplicaciones > Alarmas. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!-- Android 13+ (API 33): Alternativa a SCHEDULE_EXACT_ALARM para apps de alarma.
+         USE_EXACT_ALARM no requiere que el usuario lo conceda manualmente — está
+         disponible directamente si la app está categorizada como app de alarma.
+         Declarar ambos mejora compatibilidad entre versiones. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- Mostrar UI de alarma sobre la pantalla de bloqueo (fullscreen intent).
+         En Android 14+ está desactivado por defecto para apps sideloaded. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+    <!-- ──────────────────────────────────────────────────────────────── -->
+    <!-- PERMISOS DE FOREGROUND SERVICE                                   -->
+    <!-- ──────────────────────────────────────────────────────────────── -->
+
+    <!-- Declarar que la app usa Foreground Services.
+         Sin esto, startForegroundService() lanza una SecurityException. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- Android 14+ (API 34): Tipo específico de foreground service.
+         AlarmService reproduce audio → tipo "mediaPlayback".
+         Android 14 exige declarar el tipo específico para aprobar la app en Play Store. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- ──────────────────────────────────────────────────────────────── -->
+    <!-- PERMISOS DE WAKELOCK Y ARRANQUE                                  -->
+    <!-- ──────────────────────────────────────────────────────────────── -->
+
+    <!-- Mantener la CPU activa mediante PowerManager.WakeLock.
+         Sin esto, acquire() en AlarmService lanza una SecurityException. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Mostrar sobre otras apps (Ya no es necesario, usamos Full Screen Intent) -->
+
+    <!-- Recibir el broadcast BOOT_COMPLETED para reprogramar alarmas tras reinicio.
+         AlarmManager borra todas las alarmas al apagar el dispositivo.
+         BootReceiver usa este permiso para detectar el reinicio y marcar que
+         las alarmas deben reprogramarse la próxima vez que el usuario abra la app. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Permiso para solicitar ignorar la optimización de batería (Android 6+) -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <application
+      android:name=".MainApplication"
+      android:label="@string/app_name"
+      android:icon="@mipmap/ic_launcher"
+      android:roundIcon="@mipmap/ic_launcher_round"
+      android:allowBackup="false"
+      android:theme="@style/AppTheme"
+      android:usesCleartextTraffic="${usesCleartextTraffic}"
+      android:supportsRtl="true">
+
+      <!-- ──────────────────────────────────────────────────────────── -->
+      <!-- ACTIVIDAD PRINCIPAL                                          -->
+      <!-- ──────────────────────────────────────────────────────────── -->
+      <activity
+        android:name=".MainActivity"
+        android:label="@string/app_name"
+        android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+        android:launchMode="singleTask"
+        android:windowSoftInputMode="adjustResize"
+        android:showWhenLocked="true"
+        android:turnScreenOn="true"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity>
+
+      <!-- ──────────────────────────────────────────────────────────── -->
+      <!-- ALARM RECEIVER                                               -->
+      <!-- Recibe el broadcast del AlarmManager cuando la alarma se    -->
+      <!-- dispara. Inicia AlarmService con los datos del medicamento.  -->
+      <!-- android:exported="false": solo este proceso puede enviarlo. -->
+      <!-- ──────────────────────────────────────────────────────────── -->
+      <receiver
+        android:name=".AlarmReceiver"
+        android:exported="false">
+        <intent-filter>
+          <action android:name="com.medreminder.ALARM_TRIGGER" />
+        </intent-filter>
+      </receiver>
+
+      <!-- ──────────────────────────────────────────────────────────── -->
+      <!-- ALARM SERVICE (Foreground Service)                           -->
+      <!-- foregroundServiceType="mediaPlayback": requerido en API 29+ -->
+      <!-- porque el service reproduce audio. Sin esto, en Android 14+ -->
+      <!-- el sistema rechaza startForegroundService().                 -->
+      <!-- ──────────────────────────────────────────────────────────── -->
+      <service
+        android:name=".AlarmService"
+        android:foregroundServiceType="mediaPlayback"
+        android:exported="false" />
+
+      <!-- ──────────────────────────────────────────────────────────── -->
+      <!-- BOOT RECEIVER                                                -->
+      <!-- android:exported="true": el sistema necesita poder enviarle -->
+      <!-- el broadcast BOOT_COMPLETED, que viene de fuera del proceso. -->
+      <!-- ──────────────────────────────────────────────────────────── -->
+      <receiver
+        android:name=".BootReceiver"
+        android:directBootAware="true"
+        android:exported="true">
+        <intent-filter>
+          <action android:name="android.intent.action.BOOT_COMPLETED" />
+          <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+          <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+          <action android:name="com.medreminder.TEST_BOOT" />
+        </intent-filter>
+      </receiver>
+
+      <!-- Receiver de Notifee para reprogramar tras reinicio (mantener por compatibilidad) -->
+      <receiver android:name="io.invertase.notifee.RebootReceiver" android:exported="true">
+        <intent-filter>
+          <action android:name="android.intent.action.BOOT_COMPLETED" />
+          <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+        </intent-filter>
+      </receiver>
+
+      <!-- Background actions foreground service (react-native-background-actions) -->
+      <service android:name="com.asterinet.reactnativebackgroundactions.BackgroundActionsTaskService"
+               android:enabled="true"
+               android:exported="false"
+               android:foregroundServiceType="specialUse">
+          <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Medication Reminders and Treatment Tracking Alarm System" />
+      </service>
+
+    </application>
+</manifest>

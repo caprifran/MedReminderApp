@@ -1,0 +1,179 @@
+Analiza completamente el flujo de alarmas Android nativas de mi aplicación React Native CLI y detecta posibles causas de delay tanto al iniciar como al detener la alarma.
+
+Contexto del proyecto:
+
+* React Native CLI
+* TypeScript
+* Android nativo en Kotlin
+* Uso de AlarmManager
+* Foreground Service
+* Full Screen Intent
+* WakeLock
+* MediaPlayer
+* Overlay UI en React Native
+* La app es un recordatorio de medicamentos estilo alarma
+
+Problema actual:
+
+* La alarma tarda demasiado en comenzar a sonar
+* Hay delay al presionar "detener alarma"
+* En Debug el problema es más notorio
+* Necesito validar si la arquitectura actual es correcta
+
+Objetivo:
+Quiero optimizar el flujo para que:
+
+* el sonido arranque casi instantáneamente
+* el stop sea inmediato
+* React Native NO bloquee ni retrase el audio
+* la UI pueda abrirse después sin afectar el sonido
+
+Necesito que revises TODO el flujo Android y detectes:
+
+* malas prácticas
+* inicializaciones tardías
+* llamadas innecesarias al bridge RN
+* bloqueos
+* posibles race conditions
+* operaciones costosas en main thread
+* problemas de arquitectura
+
+Quiero que verifiques especialmente:
+
+1. Orden correcto del flujo
+   El flujo ideal debería ser algo similar a:
+
+AlarmManager
+→ BroadcastReceiver
+→ ForegroundService
+→ WakeLock.acquire()
+→ MediaPlayer.start()
+→ Notification foreground
+→ abrir overlay/activity
+→ sincronización con React Native
+
+Verifica si actualmente el flujo respeta esto.
+
+2. Verificar si React Native está retrasando el audio
+   Detectar si:
+
+* se abre RN antes del MediaPlayer
+* se inicializa JS innecesariamente
+* el bridge RN participa antes del audio
+* el overlay depende de RN antes de iniciar sonido
+
+3. Verificar MediaPlayer
+   Analizar:
+
+* dónde se crea
+* cuándo se prepara
+* si se recrea cada vez
+* si conviene prepareAsync
+* si conviene reutilizar instancia
+* si el audio stream correcto es STREAM_ALARM
+* si se usa AudioAttributes correctamente
+
+4. Verificar WakeLock
+   Confirmar:
+
+* cuándo se adquiere
+* si llega demasiado tarde
+* si el dispositivo puede estar dormido antes del start
+
+5. Verificar Foreground Service
+   Analizar:
+
+* si se inicia correctamente
+* si el startForeground ocurre rápido
+* si hay operaciones pesadas antes
+* si hay trabajo innecesario en onCreate/onStartCommand
+
+6. Verificar Overlay / Activity
+   Analizar:
+
+* si abrir la UI está bloqueando el audio
+* si startActivity ocurre demasiado temprano
+* si el FullScreenIntent está bien implementado
+
+7. Verificar STOP de alarma
+   Analizar:
+
+* cuánto tarda desde el botón hasta mediaPlayer.stop()
+* si el stop depende del bridge RN
+* si hay operaciones JS innecesarias antes de detener audio
+* si conviene usar BroadcastReceiver directo
+
+8. Verificar threading
+   Analizar:
+
+* operaciones ejecutadas en main thread
+* posibles bloqueos
+* cosas que deberían ir en background thread
+
+9. Instrumentación de logs
+   Agregar logs detallados con timestamps reales para medir:
+
+* Receiver triggered
+* Service started
+* WakeLock acquired
+* MediaPlayer created
+* Audio started
+* Overlay opened
+* Stop requested
+* MediaPlayer stopped
+
+Usar tags consistentes como:
+ALARM_DEBUG
+
+10. Explicar cómo medir correctamente
+    Quiero instrucciones para:
+
+* usar Logcat
+* medir tiempos reales
+* comparar Debug vs Release
+* detectar dónde está el cuello de botella
+
+11. Revisar optimizaciones Android modernas
+    Especialmente:
+
+* Android 13
+* Android 14
+* exact alarms
+* battery optimizations
+* foreground service restrictions
+* full screen intent behavior
+
+12. Darme un plan de mejoras priorizado
+    Ordenado por:
+
+* impacto real
+* dificultad
+* prioridad
+
+13. IMPORTANTE
+    NO quiero soluciones rápidas ni hacks.
+
+Quiero:
+
+* arquitectura Android correcta
+* comportamiento similar a una alarma real
+* mínima latencia
+* flujo profesional
+* escalable
+
+14. Resultado esperado
+    El resultado ideal debería ser:
+
+* audio casi instantáneo
+* stop instantáneo
+* overlay aparece rápidamente
+* comportamiento estable incluso con pantalla apagada
+* funcionamiento correcto en background
+* funcionamiento correcto con teléfono bloqueado
+
+Al finalizar:
+
+* explicame exactamente qué problemas encontraste
+* por qué generan delay
+* cómo corregirlos
+* y qué impacto tendría cada mejora
