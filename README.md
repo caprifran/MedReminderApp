@@ -192,8 +192,8 @@ Asegúrate de contar con el siguiente entorno configurado:
 ### 1. Clonar el Repositorio
 
 ```bash
-git clone https://github.com/<TU_USUARIO>/MedReminder.git
-cd MedReminder
+git clone https://github.com/caprifran/MedReminderApp.git
+cd MedReminderApp
 ```
 
 ### 2. Instalar Dependencias
